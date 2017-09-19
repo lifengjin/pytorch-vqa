@@ -51,9 +51,9 @@ def path_for(train=False, val=False, test=False, question=False, answer=False):
     else:
         split = 'test2015'
     if question:
-        fmt = '{0}_{1}_{2}_questions.json'
+        fmt = 'v2_{0}_{1}_{2}_questions.json'
     else:
-        fmt = '{1}_{2}_annotations.json'
+        fmt = 'v2_{1}_{2}_annotations.json'
     s = fmt.format(config.task, config.dataset, split)
     return os.path.join(config.qa_path, s)
 
