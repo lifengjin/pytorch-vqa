@@ -1,10 +1,10 @@
 # paths
-qa_path = '/users/PAS1315/osu9095/pytorch-vqa/annotations/'  # directory containing the question and annotation jsons
+qa_path = '/fs/project/PAS1315/group4/annotations/'  # directory containing the question and annotation jsons
 train_path = '/fs/project/PAS1315/VQA/Images/train2014'  # directory of training images
 val_path = '/fs/project/PAS1315/VQA/Images/val2014'  # directory of validation images
 test_path = '/fs/project/PAS1315/VQA/Images/test2015'  # directory of test images
-preprocessed_path = '/users/PAS1315/osu9095/pytorch-vqa/preprocessed_features.h5'  # path where preprocessed features are saved to and loaded from
-vocabulary_path = '/users/PAS1315/osu9095/pytorch-vqa/vocab.json'  # path where the used vocabularies for question and answers are saved to
+preprocessed_path = '/fs/project/PAS1315/group4/preprocessed_features.h5'  # path where preprocessed features are saved to and loaded from
+vocabulary_path = '/fs/project/PAS1315/group4/vocab.json'  # path where the used vocabularies for question and answers are saved to
 
 task = 'OpenEnded'
 dataset = 'mscoco'

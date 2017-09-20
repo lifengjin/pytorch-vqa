@@ -47,10 +47,10 @@ def run(net, loader, optimizer, tracker, train=False, prefix='', epoch=0):
             'volatile': not train,
             'requires_grad': False,
         }
-        v = Variable(v.cuda(async=True), **var_params)
-        q = Variable(q.cuda(async=True), **var_params)
-        a = Variable(a.cuda(async=True), **var_params)
-        q_len = Variable(q_len.cuda(async=True), **var_params)
+        v = Variable(v.cuda(async=True), **var_params).cuda()
+        q = Variable(q.cuda(async=True), **var_params).cuda()
+        a = Variable(a.cuda(async=True), **var_params).cuda()
+        q_len = Variable(q_len.cuda(async=True), **var_params).cuda()
 
         out = net(v, q, q_len)
         nll = -log_softmax(out)
@@ -100,6 +100,8 @@ def main():
     val_loader = data.get_loader(val=True)
 
     net = nn.DataParallel(model.Net(train_loader.dataset.num_tokens)).cuda()
+    # net = model.Net(train_loader.dataset.num_tokens)
+    net.cuda()
     optimizer = optim.Adam([p for p in net.parameters() if p.requires_grad])
 
     tracker = utils.Tracker()
