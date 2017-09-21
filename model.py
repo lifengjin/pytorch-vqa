@@ -96,6 +96,51 @@ class TextProcessor(nn.Module):
         _, (_, c) = self.lstm(packed)
         return c.squeeze(0)
 
+class BadassTextProcessor(nn.Module):
+    def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3):
+        super(TextProcessor, self).__init__()
+        self.kw = kernel_width
+
+        self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
+        self.drop = nn.Dropout(drop)
+        self.tanh = nn.Tanh()
+
+        self.cnn_conv = nn.Conv_2d(1, kernel_depth, (embedding_features, self.kw), stride=1, padding=(self.kw-1)/2)
+        self.pooled = nn.AdaptiveMaxPool2d((1, kernel_depth))
+
+        ## LSTMs are for looooosers
+        #self.lstm = nn.LSTM(input_size=embedding_features,
+        #                    hidden_size=lstm_features,
+        #                    num_layers=1)
+        #self.features = lstm_features
+
+        #self._init_lstm(self.lstm.weight_ih_l0)
+        #self._init_lstm(self.lstm.weight_hh_l0)
+        #self.lstm.bias_ih_l0.data.zero_()
+        #self.lstm.bias_hh_l0.data.zero_()
+
+        init.xavier_uniform(self.embedding.weight)
+
+    def _init_lstm(self, weight):
+        for w in weight.chunk(4, 0):
+            init.xavier_uniform(w)
+
+    def forward(self, q, q_len):
+        embedded = self.embedding(q)
+        tanhed = self.tanh(self.drop(embedded))
+        packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
+
+        #hor_padding = (self.kw-1)/2
+        #super_padded = nn.ZeroPad2d((hor_padding, hor_padding, 0, 0))
+
+        # maybe? may need to reorder dimensions
+        minibatch_tensor = packed.data
+        # do whatever we need to to make it work
+
+        #_, (_, c) = self.lstm(packed)
+        _, (_, c) = self.pooled(self.cnn_conv(minibatch_tensor))
+        return c.squeeze(0)
+
 
 class Attention(nn.Module):
     def __init__(self, v_features, q_features, mid_features, glimpses, drop=0.0):
