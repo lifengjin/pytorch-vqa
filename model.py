@@ -3,7 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 from torch.nn.utils.rnn import pack_padded_sequence
-
+import typing
+import torch.cuda
+import math
 import config
 
 
@@ -90,23 +92,36 @@ class TextProcessor(nn.Module):
             init.xavier_uniform(w)
 
     def forward(self, q, q_len):
+        print(q)
         embedded = self.embedding(q)
+        print(embedded.size())
         tanhed = self.tanh(self.drop(embedded))
         packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
         _, (_, c) = self.lstm(packed)
         return c.squeeze(0)
 
+class ConvBlock(nn.Module):
+    def __init__(self, kernel_depth, embedding_features, kernel_width, max_k=1):
+        super(ConvBlock, self).__init__()
+        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features, kernel_width), stride=1, padding=math.ceil((kernel_width-1)/2))
+        self.pooled = nn.AdaptiveMaxPool2d((max_k, kernel_depth))
+        self.activation = nn.ReLU()
+        self.batchnorm = nn.BatchNorm1d()
+
+    def forward(self, x):
+        x = self.cnn_conv(x)
+        x = self.activation(x)
+        x = torch.squeeze(self.pooled(torch.squeeze(x)))
+        return x
+
 class BadassTextProcessor(nn.Module):
     def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3):
-        super(TextProcessor, self).__init__()
+        super(BadassTextProcessor, self).__init__()
         self.kw = kernel_width
 
         self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
-
-        self.cnn_conv = nn.Conv_2d(1, kernel_depth, (embedding_features, self.kw), stride=1, padding=(self.kw-1)/2)
-        self.pooled = nn.AdaptiveMaxPool2d((1, kernel_depth))
 
         ## LSTMs are for looooosers
         #self.lstm = nn.LSTM(input_size=embedding_features,
@@ -125,20 +140,22 @@ class BadassTextProcessor(nn.Module):
         for w in weight.chunk(4, 0):
             init.xavier_uniform(w)
 
-    def forward(self, q, q_len):
-        embedded = self.embedding(q)
+    def forward(self, q : torch.cuda.LongTensor, q_len : int):
+        print(q)
+        exit(-1)
+        embedded = self.embedding(q) # size: batch (128) * seq_len (23) * emb_len (300)
         tanhed = self.tanh(self.drop(embedded))
-        packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
+        # packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
 
         #hor_padding = (self.kw-1)/2
         #super_padded = nn.ZeroPad2d((hor_padding, hor_padding, 0, 0))
 
         # maybe? may need to reorder dimensions
-        minibatch_tensor = packed.data
+        # minibatch_tensor = packed.data
         # do whatever we need to to make it work
 
         #_, (_, c) = self.lstm(packed)
-        _, (_, c) = self.pooled(self.cnn_conv(minibatch_tensor))
+        _, (_, c) = self.pooled(self.cnn_conv(tanhed.transpose(1,2)))
         return c.squeeze(0)
 
 
