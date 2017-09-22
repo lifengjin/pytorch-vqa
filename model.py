@@ -21,8 +21,15 @@ class Net(nn.Module):
         vision_features = config.output_features
         glimpses = 2
 
+        self.lstm_text = LSTMTextProcessor(
+            embedding_tokens=embedding_tokens,
+            embedding_features=300,
+            lstm_features=question_features,
+            drop=0.5,
+        )
+
         #self.text = TextProcessor(
-        self.text = BadassTextProcessor(
+        self.cnn_text = CNNTextProcessor(
             embedding_tokens=embedding_tokens,
             embedding_features=300,
             #lstm_features=question_features,
@@ -49,9 +56,12 @@ class Net(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-    def forward(self, v, q, q_len):
-        q = self.text(q, list(q_len.data))
+        self.gate = DualGateLinearUnit()
 
+    def forward(self, v, q, q_len):
+        q_lstm = self.lstm_text(q, list(q_len.data))
+        q_cnn = self.cnn_text(q, list(q_len.data))
+        q = self.gate(q_lstm, q_cnn)
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)
         a = self.attention(v, q)
         v = apply_attention(v, a)
@@ -60,6 +70,17 @@ class Net(nn.Module):
         answer = self.classifier(combined)
         return answer
 
+
+class DualGateLinearUnit(nn.Module):
+    def __init__(self):
+        super(DualGateLinearUnit, self).__init__()
+        pass
+
+    def forward(self, x, y):
+        x_s = torch.nn.functional.sigmoid(x)
+        y_s = torch.nn.functional.sigmoid(y)
+        y = x_s * y + x * y_s
+        return y
 
 class Classifier(nn.Sequential):
     def __init__(self, in_features, mid_features, out_features, drop=0.0):
@@ -71,9 +92,9 @@ class Classifier(nn.Sequential):
         self.add_module('lin2', nn.Linear(mid_features, out_features))
 
 
-class TextProcessor(nn.Module):
+class LSTMTextProcessor(nn.Module):
     def __init__(self, embedding_tokens, embedding_features, lstm_features, drop=0.0):
-        super(TextProcessor, self).__init__()
+        super(LSTMTextProcessor, self).__init__()
         self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
@@ -119,9 +140,9 @@ class ConvBlock(nn.Module):
         return x
 
 # kernel_depth = 1024
-class BadassTextProcessor(nn.Module):
+class CNNTextProcessor(nn.Module):
     def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3, layers=2, max_k=1, multilayer=True):
-        super(BadassTextProcessor, self).__init__()
+        super(CNNTextProcessor, self).__init__()
         self.kw = kernel_width
         self.multilayer = multilayer
 
