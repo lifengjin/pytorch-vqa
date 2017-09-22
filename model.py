@@ -105,18 +105,20 @@ class TextProcessor(nn.Module):
 class ConvBlock(nn.Module):
     def __init__(self, kernel_depth, embedding_features, kernel_width, max_k=1):
         super(ConvBlock, self).__init__()
-        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features, kernel_width), stride=1,
+        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features + 2, kernel_width), stride=1,
                                   padding=math.ceil((kernel_width-1)/2))
         self.pooled = nn.AdaptiveMaxPool2d((max_k, kernel_depth))
         self.activation = nn.ReLU()
-        self.batchnorm = nn.BatchNorm1d(embedding_features)
+        self.batchnorm = nn.BatchNorm1d(kernel_depth)
 
     def forward(self, x):
         x = self.cnn_conv(x)
+        # print(x.size())
         x = self.activation(self.batchnorm(x))
         x = torch.squeeze(self.pooled(torch.squeeze(x))) #need to be flattened
         return x
 
+# kernel_depth = 1024
 class BadassTextProcessor(nn.Module):
     def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3):
         super(BadassTextProcessor, self).__init__()
@@ -146,7 +148,7 @@ class BadassTextProcessor(nn.Module):
 
         #_, (_, c) = self.lstm(packed)
         #_, (_, c) = self.pooled(self.cnn_conv(tanhed.transpose(1,2)))
-        c = self.cnn(torch.unsqueeze(tanhed.transpose(1,2)),1) # size: batch (128) * seq_len (23) * emb_len (300)
+        c = self.cnn(torch.unsqueeze(tanhed.transpose(1,2), 1)) # size: batch (128) * seq_len (23) * emb_len (300)
         return c.squeeze(0)
 
 
