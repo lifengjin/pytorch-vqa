@@ -92,9 +92,9 @@ class TextProcessor(nn.Module):
             init.xavier_uniform(w)
 
     def forward(self, q, q_len):
-        print(q)
+        # print(q)
         embedded = self.embedding(q)
-        print(embedded.size())
+        # print(embedded.size())
         tanhed = self.tanh(self.drop(embedded))
         packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
         _, (_, c) = self.lstm(packed)
@@ -103,15 +103,16 @@ class TextProcessor(nn.Module):
 class ConvBlock(nn.Module):
     def __init__(self, kernel_depth, embedding_features, kernel_width, max_k=1):
         super(ConvBlock, self).__init__()
-        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features, kernel_width), stride=1, padding=math.ceil((kernel_width-1)/2))
+        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features, kernel_width), stride=1,
+                                  padding=math.ceil((kernel_width-1)/2))
         self.pooled = nn.AdaptiveMaxPool2d((max_k, kernel_depth))
         self.activation = nn.ReLU()
-        self.batchnorm = nn.BatchNorm1d()
+        self.batchnorm = nn.BatchNorm1d(embedding_features)
 
     def forward(self, x):
         x = self.cnn_conv(x)
-        x = self.activation(x)
-        x = torch.squeeze(self.pooled(torch.squeeze(x)))
+        x = self.activation(self.batchnorm(x))
+        x = torch.squeeze(self.pooled(torch.squeeze(x))) #need to be flattened
         return x
 
 class BadassTextProcessor(nn.Module):
@@ -123,22 +124,7 @@ class BadassTextProcessor(nn.Module):
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
 
-        ## LSTMs are for looooosers
-        #self.lstm = nn.LSTM(input_size=embedding_features,
-        #                    hidden_size=lstm_features,
-        #                    num_layers=1)
-        #self.features = lstm_features
-
-        #self._init_lstm(self.lstm.weight_ih_l0)
-        #self._init_lstm(self.lstm.weight_hh_l0)
-        #self.lstm.bias_ih_l0.data.zero_()
-        #self.lstm.bias_hh_l0.data.zero_()
-
         init.xavier_uniform(self.embedding.weight)
-
-    def _init_lstm(self, weight):
-        for w in weight.chunk(4, 0):
-            init.xavier_uniform(w)
 
     def forward(self, q : torch.cuda.LongTensor, q_len : int):
         print(q)
