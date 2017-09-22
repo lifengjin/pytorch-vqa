@@ -21,7 +21,7 @@ class Net(nn.Module):
         vision_features = config.output_features
         glimpses = 2
 
-        self.lstm_text = TextProcessor(
+        self.lstm_text = LSTMTextProcessor(
             embedding_tokens=embedding_tokens,
             embedding_features=300,
             lstm_features=question_features,
@@ -29,7 +29,7 @@ class Net(nn.Module):
         )
 
         #self.text = TextProcessor(
-        self.cnn_text = BadassTextProcessor(
+        self.cnn_text = CNNTextProcessor(
             embedding_tokens=embedding_tokens,
             embedding_features=300,
             #lstm_features=question_features,
@@ -73,7 +73,7 @@ class Net(nn.Module):
 
 class DualGateLinearUnit(nn.Module):
     def __init__(self):
-        super(GateLinearUnit, self).__init__()
+        super(DualGateLinearUnit, self).__init__()
         pass
 
     def forward(self, x, y):
@@ -92,9 +92,9 @@ class Classifier(nn.Sequential):
         self.add_module('lin2', nn.Linear(mid_features, out_features))
 
 
-class TextProcessor(nn.Module):
+class LSTMTextProcessor(nn.Module):
     def __init__(self, embedding_tokens, embedding_features, lstm_features, drop=0.0):
-        super(TextProcessor, self).__init__()
+        super(LSTMTextProcessor, self).__init__()
         self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
@@ -140,9 +140,9 @@ class ConvBlock(nn.Module):
         return x
 
 # kernel_depth = 1024
-class BadassTextProcessor(nn.Module):
+class CNNTextProcessor(nn.Module):
     def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3):
-        super(BadassTextProcessor, self).__init__()
+        super(CNNTextProcessor, self).__init__()
         self.kw = kernel_width
 
         self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
