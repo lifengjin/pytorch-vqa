@@ -146,7 +146,7 @@ class BadassTextProcessor(nn.Module):
 
         #_, (_, c) = self.lstm(packed)
         #_, (_, c) = self.pooled(self.cnn_conv(tanhed.transpose(1,2)))
-        c = self.cnn(tanhed.transpose(1,2))
+        c = self.cnn(torch.unsqueeze(tanhed.transpose(1,2)),1) # size: batch (128) * seq_len (23) * emb_len (300)
         return c.squeeze(0)
 
 
