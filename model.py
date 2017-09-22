@@ -126,7 +126,7 @@ class BadassTextProcessor(nn.Module):
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
 
-        self.cnn = ConvBlock(kernel_depth, embedding_features, kernel_width))
+        self.cnn = ConvBlock(kernel_depth, embedding_features, kernel_width)
 
         init.xavier_uniform(self.embedding.weight)
 
