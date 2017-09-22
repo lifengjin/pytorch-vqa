@@ -21,8 +21,15 @@ class Net(nn.Module):
         vision_features = config.output_features
         glimpses = 2
 
+        self.lstm_text = TextProcessor(
+            embedding_tokens=embedding_tokens,
+            embedding_features=300,
+            lstm_features=question_features,
+            drop=0.5,
+        )
+
         #self.text = TextProcessor(
-        self.text = BadassTextProcessor(
+        self.cnn_text = BadassTextProcessor(
             embedding_tokens=embedding_tokens,
             embedding_features=300,
             #lstm_features=question_features,
@@ -49,9 +56,12 @@ class Net(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-    def forward(self, v, q, q_len):
-        q = self.text(q, list(q_len.data))
+        self.gate = GateLinearUnit()
 
+    def forward(self, v, q, q_len):
+        q_lstm = self.lstm_text(q, list(q_len.data))
+        q_cnn = self.cnn_text(q, list(q_len.data))
+        q = self.gate(q_lstm, q_cnn)
         v = v / (v.norm(p=2, dim=1, keepdim=True).expand_as(v) + 1e-8)
         a = self.attention(v, q)
         v = apply_attention(v, a)
@@ -60,6 +70,16 @@ class Net(nn.Module):
         answer = self.classifier(combined)
         return answer
 
+
+class GateLinearUnit(nn.Module):
+    def __init__(self):
+        super(GateLinearUnit, self).__init__()
+        pass
+
+    def forward(self, x, y):
+        x = torch.nn.functional.sigmoid(x)
+        y = x * y
+        return y
 
 class Classifier(nn.Sequential):
     def __init__(self, in_features, mid_features, out_features, drop=0.0):
