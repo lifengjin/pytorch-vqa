@@ -77,8 +77,9 @@ class GateLinearUnit(nn.Module):
         pass
 
     def forward(self, x, y):
-        x = torch.nn.functional.sigmoid(x)
-        y = x * y
+        x_s = torch.nn.functional.sigmoid(x)
+        y_s = torch.nn.functional.sigmoid(y)
+        y = x_s * y + x * y_s
         return y
 
 class Classifier(nn.Sequential):
