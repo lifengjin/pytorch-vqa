@@ -133,21 +133,9 @@ class BadassTextProcessor(nn.Module):
         init.xavier_uniform(self.embedding.weight)
 
     def forward(self, q : torch.cuda.LongTensor, q_len : int):
-        #print(q)
-        #exit(-1)
+
         embedded = self.embedding(q) # size: batch (128) * seq_len (23) * emb_len (300)
         tanhed = self.tanh(self.drop(embedded))
-        # packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
-
-        #hor_padding = (self.kw-1)/2
-        #super_padded = nn.ZeroPad2d((hor_padding, hor_padding, 0, 0))
-
-        # maybe? may need to reorder dimensions
-        # minibatch_tensor = packed.data
-        # do whatever we need to to make it work
-
-        #_, (_, c) = self.lstm(packed)
-        #_, (_, c) = self.pooled(self.cnn_conv(tanhed.transpose(1,2)))
         c = self.cnn(torch.unsqueeze(tanhed.transpose(1,2), 1)) # size: batch (128) * seq_len (23) * emb_len (300)
         return c.squeeze(0)
 
