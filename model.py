@@ -21,10 +21,12 @@ class Net(nn.Module):
         vision_features = config.output_features
         glimpses = 2
 
-        self.text = TextProcessor(
+        #self.text = TextProcessor(
+        self.text = BadassTextProcessor(
             embedding_tokens=embedding_tokens,
             embedding_features=300,
-            lstm_features=question_features,
+            #lstm_features=question_features,
+            kernel_depth=question_features,
             drop=0.5,
         )
         self.attention = Attention(
@@ -124,11 +126,13 @@ class BadassTextProcessor(nn.Module):
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
 
+        self.cnn = ConvBlock(kernel_depth, embedding_features, kernel_width))
+
         init.xavier_uniform(self.embedding.weight)
 
     def forward(self, q : torch.cuda.LongTensor, q_len : int):
-        print(q)
-        exit(-1)
+        #print(q)
+        #exit(-1)
         embedded = self.embedding(q) # size: batch (128) * seq_len (23) * emb_len (300)
         tanhed = self.tanh(self.drop(embedded))
         # packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
@@ -141,7 +145,8 @@ class BadassTextProcessor(nn.Module):
         # do whatever we need to to make it work
 
         #_, (_, c) = self.lstm(packed)
-        _, (_, c) = self.pooled(self.cnn_conv(tanhed.transpose(1,2)))
+        #_, (_, c) = self.pooled(self.cnn_conv(tanhed.transpose(1,2)))
+        c = self.cnn(tanhed.transpose(1,2))
         return c.squeeze(0)
 
 
