@@ -105,30 +105,39 @@ class TextProcessor(nn.Module):
 class ConvBlock(nn.Module):
     def __init__(self, kernel_depth, embedding_features, kernel_width, max_k=1):
         super(ConvBlock, self).__init__()
-        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features + 2, kernel_width), stride=1,
-                                  padding=math.ceil((kernel_width-1)/2))
-        self.pooled = nn.AdaptiveMaxPool2d((max_k, kernel_depth))
+        padding_size = math.ceil((kernel_width-1)/2)
+
+        self.cnn_conv = nn.Conv2d(1, kernel_depth, (embedding_features + 2*padding_size, kernel_width), stride=1,
+                                  padding=padding_size)
         self.activation = nn.ReLU()
         self.batchnorm = nn.BatchNorm1d(kernel_depth)
 
     def forward(self, x):
         x = self.cnn_conv(x)
-        # print(x.size())
         x = self.activation(self.batchnorm(x))
-        x = torch.squeeze(self.pooled(torch.squeeze(x))) #need to be flattened
+        x = x.transpose(1,2)
         return x
 
 # kernel_depth = 1024
 class BadassTextProcessor(nn.Module):
-    def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3):
+    def __init__(self, embedding_tokens, embedding_features, kernel_depth, drop=0.0, kernel_width=3, layers=2, max_k=1, multilayer=True):
         super(BadassTextProcessor, self).__init__()
         self.kw = kernel_width
+        self.multilayer = multilayer
 
         self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
         self.drop = nn.Dropout(drop)
         self.tanh = nn.Tanh()
 
-        self.cnn = ConvBlock(kernel_depth, embedding_features, kernel_width)
+        # single CNN case
+        self.cnn_single_layer = ConvBlock(kernel_depth, embedding_features, kernel_width)
+
+        # multi-layer case
+        self.cnn_multi_l1 = ConvBlock(kernel_depth, embedding_features, kernel_width)
+        self.cnn_multi_l2 = ConvBlock(kernel_depth, kernel_depth, kernel_width)
+        self.cnn_multi_l3 = ConvBlock(kernel_depth, kernel_depth, kernel_width)
+
+        self.pooling = nn.AdaptiveMaxPool2d((max_k, kernel_depth))
 
         init.xavier_uniform(self.embedding.weight)
 
@@ -136,7 +145,20 @@ class BadassTextProcessor(nn.Module):
 
         embedded = self.embedding(q) # size: batch (128) * seq_len (23) * emb_len (300)
         tanhed = self.tanh(self.drop(embedded))
-        c = self.cnn(torch.unsqueeze(tanhed.transpose(1,2), 1)) # size: batch (128) * seq_len (23) * emb_len (300)
+
+        c = torch.unsqueeze(tanhed.transpose(1,2), 1)  # size: batch (128) * seq_len (23) * emb_len (300)
+
+        # single layer
+        if not self.multilayer:
+            c = self.cnn_single_layer(c)
+        # multi layer
+        else:
+            c = self.cnn_multi_l1(c)
+            c = self.cnn_multi_l2(c)
+            c = self.cnn_multi_l3(c)
+
+        c = self.pooling(torch.squeeze(c))
+        c = torch.squeeze(c) # flatten it
         return c.squeeze(0)
 
 
