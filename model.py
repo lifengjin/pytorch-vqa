@@ -56,7 +56,7 @@ class Net(nn.Module):
                 if m.bias is not None:
                     m.bias.data.zero_()
 
-        self.gate = DualGateLinearUnit()
+        self.gate = DualGatedLinearUnit()
 
     def forward(self, v, q, q_len):
         q_lstm = self.lstm_text(q, list(q_len.data))
@@ -71,9 +71,9 @@ class Net(nn.Module):
         return answer
 
 
-class DualGateLinearUnit(nn.Module):
+class DualGatedLinearUnit(nn.Module):
     def __init__(self):
-        super(DualGateLinearUnit, self).__init__()
+        super(DualGatedLinearUnit, self).__init__()
         pass
 
     def forward(self, x, y):
